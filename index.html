@@ -1,250 +1,219 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Painel Frota - Tempo Real</title>
 
+  <meta http-equiv="refresh" content="300">
+
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: Arial, sans-serif;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
 
     body {
-      background: #000;
+      background: #0f172a;
       color: #fff;
       overflow: hidden;
     }
 
-    .container {
-      padding: 10px;
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 15px 30px;
+      background: #020617;
     }
 
-    .logo {
+    .header img {
+      height: 60px;
+    }
+
+    .titulo {
       text-align: center;
-      margin-bottom: 10px;
     }
 
-    .logo img {
-      height: 70px;
+    .titulo h1 {
+      font-size: 28px;
     }
 
-    .clock {
-      text-align: center;
-      font-size: 36px;
-      margin-bottom: 10px;
-      color: #0f0;
+    .relogio {
+      text-align: right;
+      font-size: 20px;
       font-weight: bold;
     }
 
-    .grid {
+    .painel {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
+      gap: 15px;
+      padding: 15px;
+      height: calc(100vh - 100px);
     }
 
-    .card {
-      background: #111;
-      border-radius: 10px;
+    .box {
+      background: #020617;
+      border-radius: 15px;
       padding: 10px;
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
 
-    .card h2 {
+    .box h2 {
       text-align: center;
-      margin-bottom: 8px;
-      font-size: 22px;
-      color: #00ffff;
+      margin-bottom: 10px;
+      font-size: 18px;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 16px;
+      font-size: 12px;
+    }
+
+    th, td {
+      padding: 6px;
+      border-bottom: 1px solid #1e293b;
+      text-align: center;
+      white-space: nowrap;
     }
 
     th {
-      background: #222;
-      padding: 6px;
-      text-align: center;
-      font-size: 15px;
+      background: #020617;
     }
 
-    td {
-      padding: 6px;
-      text-align: center;
-      border-bottom: 1px solid #333;
-    }
-
-    tr.status-andamento {
-      background: #5c4d00;
+    .status-andamento {
+      background: #a16207 !important;
       color: #fff;
       font-weight: bold;
     }
 
-    tr.status-concluido {
-      background: #003300;
+    .status-concluido {
+      background: #166534 !important;
       color: #fff;
       font-weight: bold;
     }
   </style>
 </head>
+
 <body>
 
-<div class="container">
-
-  <div class="logo">
-    <!-- Troque o arquivo pelo logo da sua empresa -->
-    <img src="logo.png" alt="Logo da Empresa">
+  <div class="header">
+    <img src="logo.png" alt="Logo">
+    <div class="titulo">
+      <h1>PAINEL DE SAÍDAS</h1>
+      <div id="dataHora"></div>
+    </div>
+    <div class="relogio" id="diaSemana"></div>
   </div>
 
-  <div class="clock" id="clock">--:--</div>
-
-  <div class="grid">
-    <div class="card">
+  <div class="painel">
+    <div class="box">
       <h2>PAINEL</h2>
       <div id="painel"></div>
     </div>
-
-    <div class="card">
+    <div class="box">
       <h2>AGENDA DO DIA</h2>
-      <div id="agenda"></div>
+      <div id="agendaDia"></div>
     </div>
-
-    <div class="card">
+    <div class="box">
       <h2>AGENDA SERVIÇO SOCIAL</h2>
-      <div id="social"></div>
+      <div id="agendaSS"></div>
     </div>
   </div>
-
-</div>
 
 <script>
 const SHEET_ID = "1Ch3AjQ0MDo4WuQWFDR3r8nZrHb4yQkSLOtT5_QgxT6E";
 
-const ABAS = [
-  { name: "PAINEL", div: "painel" },
-  { name: "AGENDA DO DIA", div: "agenda" },
-  { name: "AGENDA SERVIÇO SOCIAL", div: "social" }
-];
+const abas = {
+  "PAINEL": "LANÇAMENTOS",
+  "AGENDA DO DIA": "AGENDA DO DIA",
+  "AGENDA SERVIÇO SOCIAL": "AGENDA SERVIÇO SOCIAL"
+};
 
-// ===================== RELÓGIO =====================
 function atualizarRelogio() {
   const agora = new Date();
-  const h = String(agora.getHours()).padStart(2, "0");
-  const m = String(agora.getMinutes()).padStart(2, "0");
-  document.getElementById("clock").innerText = `${h}:${m}`;
+  document.getElementById("dataHora").innerHTML =
+    agora.toLocaleDateString("pt-BR") + " - " +
+    agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+  document.getElementById("diaSemana").innerHTML =
+    agora.toLocaleDateString("pt-BR", { weekday: "long" });
 }
+
 setInterval(atualizarRelogio, 1000);
 atualizarRelogio();
 
-// ===================== HTML SAFE =====================
 function escapeHtml(text) {
-  if (text === null || text === undefined) return "";
-  return String(text)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;" };
+  return text.replace(/[&<>]/g, m => map[m]);
 }
 
-// ===================== FORMATAÇÃO DE CÉLULAS =====================
-function formatCell(value) {
-  if (value === null || value === undefined) return "";
+function formatCell(value, somenteHora = false) {
+  if (!value) return "";
 
-  let v = String(value);
+  const v = String(value);
 
-  // Trata Date(2025,10,11)
-  const match = v.match(/Date\((\d+),(\d+),(\d+)\)/);
+  const match = v.match(/Date\((\d+),(\d+),(\d+),?(\d*)?,?(\d*)?,?(\d*)?\)/);
   if (match) {
     const ano = match[1];
     const mes = String(Number(match[2]) + 1).padStart(2, "0");
     const dia = String(match[3]).padStart(2, "0");
-    return `${dia}/${mes}/${ano}`;
+    const hora = match[4] ? String(match[4]).padStart(2, "0") : "00";
+    const minuto = match[5] ? String(match[5]).padStart(2, "0") : "00";
+
+    if (somenteHora) return `${hora}:${minuto}`;
+    return `${dia}/${mes}/${ano} ${hora}:${minuto}`;
   }
 
   return v;
 }
 
-// ===================== RENDER TABELA =====================
-function renderTabela(divId, cols, rows, nomeAba) {
-  const div = document.getElementById(divId);
-
-  let html = "<table><thead><tr>";
-  cols.forEach(c => html += `<th>${escapeHtml(c)}</th>`);
-  html += "</tr></thead><tbody>";
-
-  rows.forEach(r => {
-    let classe = "";
-    const statusBruto = r[r.length - 1] ?? "";
-    const status = String(statusBruto).toLowerCase();
-
-    if (status.includes("andamento")) classe = "status-andamento";
-    if (status.includes("concluído") || status.includes("concluido"))
-      classe = "status-concluido";
-
-    html += `<tr class="${classe}">`;
-
-    r.forEach((cellValue, idx) => {
-      let valor = formatCell(cellValue);
-
-      // ✅ REGRA ESPECIAL → só na AGENDA DO DIA, coluna Hora
-      if (
-        nomeAba === "AGENDA DO DIA" &&
-        cols[idx] &&
-        cols[idx].toLowerCase().includes("hora")
-      ) {
-        // extrai apenas HH:MM
-        const hora = valor.match(/(\d{1,2}):(\d{2})/);
-        if (hora) {
-          valor = `${hora[1].padStart(2, "0")}:${hora[2]}`;
-        }
-      }
-
-      html += `<td>${escapeHtml(valor)}</td>`;
-    });
-
-    html += "</tr>";
-  });
-
-  html += "</tbody></table>";
-  div.innerHTML = html;
-}
-
-// ===================== CARREGADOR =====================
-function carregar(sheet, divId) {
-  const url =
-    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?` +
-    `tqx=out:json&sheet=${encodeURIComponent(sheet)}&nocache=` +
-    new Date().getTime();
+function renderTabela(divId, sheetName) {
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}&nocache=${Date.now()}`;
 
   fetch(url)
     .then(r => r.text())
     .then(text => {
-      const json = JSON.parse(text.substring(47).slice(0, -2));
+      const jsonText = text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1);
+      const data = JSON.parse(jsonText);
 
-      const cols = json.table.cols.map(c => c.label || "");
-      const rows = json.table.rows.map(r =>
-        r.c.map(c => (c ? c.v : ""))
-      );
+      const cols = data.table.cols.map(c => c.label || "");
+      const rows = data.table.rows.map(r => r.c.map(c => c ? c.v : ""));
 
-      renderTabela(divId, cols, rows, sheet);
-    })
-    .catch(err => {
-      document.getElementById(divId).innerHTML =
-        `<div style="color:red">Erro ao carregar dados</div>`;
-      console.error("Erro:", err);
+      let html = "<table><thead><tr>";
+      cols.forEach(c => html += `<th>${escapeHtml(c)}</th>`);
+      html += "</tr></thead><tbody>";
+
+      rows.forEach(r => {
+        let classe = "";
+        const status = String(r[r.length - 1] || "").toLowerCase();
+        if (status.includes("andamento")) classe = "status-andamento";
+        if (status.includes("concluido") || status.includes("concluído")) classe = "status-concluido";
+
+        html += `<tr class="${classe}">`;
+
+        r.forEach((cell, idx) => {
+          const somenteHora = (sheetName === "AGENDA DO DIA" && cols[idx].toLowerCase().includes("hora"));
+          const valor = formatCell(cell, somenteHora);
+          html += `<td>${escapeHtml(valor)}</td>`;
+        });
+
+        html += "</tr>";
+      });
+
+      html += "</tbody></table>";
+      document.getElementById(divId).innerHTML = html;
     });
 }
 
-// ===================== ATUALIZAÇÃO AUTOMÁTICA =====================
-function atualizarTudo() {
-  ABAS.forEach(a => carregar(a.name, a.div));
+function carregarTudo() {
+  renderTabela("painel", abas["PAINEL"]);
+  renderTabela("agendaDia", abas["AGENDA DO DIA"]);
+  renderTabela("agendaSS", abas["AGENDA SERVIÇO SOCIAL"]);
 }
 
-atualizarTudo();
-setInterval(atualizarTudo, 60000); // 1 minuto
+carregarTudo();
+setInterval(carregarTudo, 60000);
 </script>
 
 </body>
