@@ -1,106 +1,203 @@
 <!doctype html>
-<html>
+<html lang="pt-br">
 <head>
-<meta charset="utf-8">
-<title>Planilha limpa (robusta)</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Painel da Frota - TV</title>
+
 <style>
-  body{font-family:system-ui,Segoe UI,Arial;background:#0b1220;color:#eef2ff;margin:0;padding:20px;}
-  .wrap{max-width:1200px;margin:0 auto;}
-  table{width:100%;border-collapse:collapse;background:rgba(255,255,255,0.03);border-radius:8px;overflow:hidden;}
-  thead th{background:rgba(255,255,255,0.04);text-align:left;padding:10px;font-weight:600}
-  tbody td{padding:8px;border-top:1px solid rgba(255,255,255,0.03)}
-  .small{font-size:13px;color:#cbd5e1}
-  .status-em{color:#f6e05e;font-weight:700}
-  .status-ok{color:#9ae6b4;font-weight:700}
-  .error{color:#ff9aa2;background:#3b0f12;padding:10px;border-radius:6px}
+body{
+  margin:0;
+  background:#0b1324;
+  color:#ffffff;
+  font-family: "Segoe UI", Arial, sans-serif;
+  overflow:hidden;
+}
+
+header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:20px 35px;
+  background:#0f1b36;
+}
+
+.logo{
+  height:60px;
+}
+
+header h1{
+  font-size:32px;
+  margin:0;
+}
+
+.clock{
+  font-size:26px;
+}
+
+.panel{
+  height:calc(100vh - 100px);
+  padding:20px 35px;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:20px;
+  height:100%;
+}
+
+.card{
+  background:#111d3a;
+  border-radius:16px;
+  padding:18px;
+  box-shadow:0 10px 30px rgba(0,0,0,.5);
+  overflow:hidden;
+}
+
+.card h2{
+  margin:0 0 10px 0;
+  font-size:22px;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:18px;
+}
+
+thead th{
+  background:#1c2a4d;
+  padding:10px;
+  text-align:left;
+}
+
+tbody td{
+  padding:10px;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+
+.status-em{color:#ffd166;font-weight:bold;}
+.status-ok{color:#6cff95;font-weight:bold;}
+.status-cancelado{color:#ff6b6b;font-weight:bold;}
 </style>
 </head>
+
 <body>
-  <div class="wrap">
-    <h1>Painel — Planilha limpa</h1>
-    <p class="small" id="meta">Carregando...</p>
-    <div id="table-wrap"></div>
+
+<header>
+  <img src="sua-logo.png" class="logo"/>
+  <h1>Painel de Saídas</h1>
+  <div class="clock" id="clock">--:--</div>
+</header>
+
+<div class="panel">
+  <div class="grid">
+
+    <div class="card">
+      <h2>Movimentação da Frota</h2>
+      <div id="frota"></div>
+    </div>
+
+    <div class="card">
+      <h2>Agenda do Dia</h2>
+      <div id="agendaDia"></div>
+    </div>
+
+    <div class="card">
+      <h2>Agenda Serviço Social</h2>
+      <div id="agendaSocial"></div>
+    </div>
+
   </div>
+</div>
 
 <script>
-const SHEET_ID = "1avUZODKbGO0MfC2kh-YnuVHjZKUD9R3stnysR5o__JI";
-const SHEET_NAME = "PAINEL";
-const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
+const SHEET_ID = "1avUZODKbGO0MfC2kh-YnuVHjZKUD9R3stnysR5o__J";
 
-/**
- * Extrai de forma robusta o JSON do wrapper do gviz.
- * Procura o primeiro '{' e o último '}' e tenta fazer parse.
- */
-function parseGvizTextRobusto(text){
-  if (!text || typeof text !== 'string') throw new Error('Resposta vazia do Google.');
-  // Procurar primeiro '{' e último '}' na string
-  const first = text.indexOf('{');
-  const last  = text.lastIndexOf('}');
-  if (first === -1 || last === -1 || last <= first) {
-    throw new Error('Não localizei JSON válido na resposta do Google.');
-  }
-  const jsonText = text.substring(first, last + 1);
-  return JSON.parse(jsonText);
+const ABAS = {
+  frota: "LANÇAMENTOS",
+  dia: "AGENDA DO DIA",
+  social: "AGENDA SERVIÇO SOCIAL"
+};
+
+function urlAba(nome){
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(nome)}`;
 }
 
-async function load(){
-  try{
-    document.getElementById('meta').textContent = `Buscando ${SHEET_NAME}...`;
-    const r = await fetch(GVIZ_URL);
-    const txt = await r.text();
-
-    // tentar parse robusto
-    let table;
-    try {
-      const parsed = parseGvizTextRobusto(txt);
-      table = parsed.table;
-    } catch (err) {
-      // mostrar parte da resposta para debug
-      const snippet = txt ? txt.slice(0, 1000) : '';
-      throw new Error('Falha ao interpretar resposta do Google Sheets. Resposta (trecho):\n' + snippet + '\n\nErro: ' + err.message);
-    }
-
-    if (!table) throw new Error('Resposta não contém campo table.');
-
-    document.getElementById('meta').textContent = `Aba: ${SHEET_NAME} — ${table.rows.length} linhas`;
-    renderTable(table);
-
-  } catch (err) {
-    document.getElementById('meta').innerHTML = `<span class="error">Erro ao carregar: ${escapeHtml(err.message)}</span>`;
-    console.error(err);
-  }
+function extrairJson(txt){
+  const ini = txt.indexOf("{");
+  const fim = txt.lastIndexOf("}");
+  return JSON.parse(txt.substring(ini, fim + 1));
 }
 
-function escapeHtml(str){
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function relogio(){
+  const agora = new Date();
+  document.getElementById("clock").textContent =
+    agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+setInterval(relogio, 1000);
+relogio();
+
+async function carregar(aba){
+  const r = await fetch(urlAba(aba));
+  const t = await r.text();
+  const j = extrairJson(t);
+  return j.table;
 }
 
-function renderTable(table){
-  const cols = table.cols.map(c => c.label || c.id || '');
-  const rows = table.rows.map(r => (r.c || []).map(cell => (cell && ('v' in cell) ? cell.v : '')));
-  const container = document.getElementById('table-wrap');
-  if (!rows.length) {
-    container.innerHTML = '<div class="small">Nenhuma linha encontrada.</div>';
-    return;
-  }
-  let html = '<table><thead><tr>' + cols.map(c => `<th>${escapeHtml(c)}</th>`).join('') + '</tr></thead><tbody>';
-  rows.forEach(r => {
-    html += '<tr>' + r.map((v,i) => {
-      const head = (cols[i]||'').toLowerCase();
-      if (head.includes('status')) {
-        const cls = (v==='Em andamento') ? 'status-em' : (v==='Concluído') ? 'status-ok' : '';
-        return `<td class="${cls}">${escapeHtml(v||'')}</td>`;
+function montarTabela(targetId, table){
+  const headers = table.cols.map(c => c.label);
+  const rows = table.rows.map(r => r.c.map(c => (c ? c.v : "")));
+
+  let html = "<table><thead><tr>";
+  headers.forEach(h => html += `<th>${h}</th>`);
+  html += "</tr></thead><tbody>";
+
+  rows.forEach(l => {
+    html += "<tr>";
+    l.forEach((v,i) => {
+      const head = headers[i].toLowerCase();
+      let cls = "";
+
+      if(head.includes("status")){
+        if(v === "Em andamento") cls = "status-em";
+        else if(v === "Concluído") cls = "status-ok";
+        else if(v === "Cancelado") cls = "status-cancelado";
       }
-      return `<td>${escapeHtml(v||'')}</td>`;
-    }).join('') + '</tr>';
+
+      html += `<td class="${cls}">${v}</td>`;
+    });
+    html += "</tr>";
   });
-  html += '</tbody></table>';
-  container.innerHTML = html;
+
+  html += "</tbody></table>";
+  document.getElementById(targetId).innerHTML = html;
 }
 
-load();
-setInterval(load, 60000); // atualiza a cada 60s
+async function atualizarTudo(){
+  try{
+    const [frota, dia, social] = await Promise.all([
+      carregar(ABAS.frota),
+      carregar(ABAS.dia),
+      carregar(ABAS.social)
+    ]);
+
+    montarTabela("frota", frota);
+    montarTabela("agendaDia", dia);
+    montarTabela("agendaSocial", social);
+
+  }catch(e){
+    console.error(e);
+  }
+}
+
+atualizarTudo();
+setInterval(atualizarTudo, 60000); // 1 minuto
+
+// Tentar modo tela cheia ao abrir
+document.documentElement.requestFullscreen?.();
 </script>
+
 </body>
 </html>
