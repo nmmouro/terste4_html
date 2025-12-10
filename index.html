@@ -143,11 +143,12 @@ setInterval(relogio, 1000);
 relogio();
 
 async function carregar(aba){
-  const r = await fetch(urlAba(aba));
+  const r = await fetch(urlAba(aba), { cache: "no-store" });
   const t = await r.text();
   const j = extrairJson(t);
   return j.table;
 }
+
 
 function montarTabela(targetId, table){
   const headers = table.cols.map(c => c.label);
